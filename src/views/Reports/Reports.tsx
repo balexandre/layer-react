@@ -2,7 +2,7 @@ import React, { RefObject, useContext, useRef, useState } from 'react'
 import { Layer } from '../../api/layer'
 import { BalanceSheet } from '../../components/BalanceSheet'
 import { BalanceSheetStringOverrides } from '../../components/BalanceSheet/BalanceSheet'
-import { Button, ButtonVariant, RetryButton } from '../../components/Button'
+import { DownloadButton as DownloadButtonComponent } from '../../components/Button'
 import { Container } from '../../components/Container'
 import { Panel } from '../../components/Panel'
 import { ProfitAndLoss } from '../../components/ProfitAndLoss'
@@ -12,9 +12,10 @@ import { StatementOfCashFlow } from '../../components/StatementOfCashFlow'
 import { StatementOfCashFlowStringOverrides } from '../../components/StatementOfCashFlow/StatementOfCashFlow'
 import { Toggle } from '../../components/Toggle'
 import { View } from '../../components/View'
+import { BREAKPOINTS } from '../../config/general'
 import { useLayerContext } from '../../contexts/LayerContext'
 import { TableProvider } from '../../contexts/TableContext'
-import DownloadCloud from '../../icons/DownloadCloud'
+import { useElementSize } from '../../hooks/useElementSize'
 
 interface ReportsStringOverrides {
   title?: string
@@ -35,10 +36,12 @@ export interface ReportsProps {
 
 type ReportType = 'profitAndLoss' | 'balanceSheet' | 'statementOfCashFlow'
 type ReportOption = { value: ReportType; label: string }
+type ViewBreakpoint = 'desktop' | 'tablet' | 'mobile' | undefined
 export interface ReportsPanelProps {
   containerRef: RefObject<HTMLDivElement>
   openReport: ReportType
   stringOverrides?: ReportsStringOverrides
+  view: ViewBreakpoint
 }
 
 interface DownloadButtonStringOverrides {
@@ -48,14 +51,18 @@ interface DownloadButtonStringOverrides {
 
 const DownloadButton = ({
   stringOverrides,
+  view,
 }: {
   stringOverrides?: DownloadButtonStringOverrides
+  view?: ViewBreakpoint
 }) => {
   const { dateRange } = useContext(ProfitAndLoss.Context)
   const { auth, businessId, apiUrl } = useLayerContext()
   const [requestFailed, setRequestFailed] = useState(false)
+  const [isDownloading, setIsDownloading] = useState(false)
 
   const handleClick = async () => {
+    setIsDownloading(true)
     const month = (dateRange.startDate.getMonth() + 1).toString()
     const year = dateRange.startDate.getFullYear().toString()
     const getProfitAndLossCsv = Layer.getProfitAndLossCsv(
@@ -79,25 +86,20 @@ const DownloadButton = ({
       }
     } catch (e) {
       setRequestFailed(true)
+    } finally {
+      setIsDownloading(false)
     }
   }
 
-  return requestFailed ? (
-    <RetryButton
+  return (
+    <DownloadButtonComponent
+      iconOnly={view === 'mobile'}
       onClick={handleClick}
-      className='Layer__download-retry-btn'
-      error={'Approval failed. Check connection and retry in few seconds.'}
-    >
-      {stringOverrides?.retryButtonText || 'Retry'}
-    </RetryButton>
-  ) : (
-    <Button
-      variant={ButtonVariant.secondary}
-      rightIcon={<DownloadCloud size={12} />}
-      onClick={handleClick}
-    >
-      {stringOverrides?.downloadButtonText || 'Download'}
-    </Button>
+      isDownloading={isDownloading}
+      requestFailed={requestFailed}
+      text={stringOverrides?.downloadButtonText || 'Download'}
+      retryText={stringOverrides?.retryButtonText || 'Retry'}
+    />
   )
 }
 
@@ -129,8 +131,24 @@ export const Reports = ({
   stringOverrides,
   enabledReports = ['profitAndLoss', 'balanceSheet', 'statementOfCashFlow'],
 }: ReportsProps) => {
-  const containerRef = useRef<HTMLDivElement>(null)
   const [activeTab, setActiveTab] = useState<ReportType>(enabledReports[0])
+  const [view, setView] = useState<ViewBreakpoint>()
+
+  const containerRef = useElementSize<HTMLDivElement>((_a, _b, { width }) => {
+    if (width) {
+      if (width >= BREAKPOINTS.TABLET && view !== 'desktop') {
+        setView('desktop')
+      } else if (
+        width <= BREAKPOINTS.TABLET &&
+        width > BREAKPOINTS.MOBILE &&
+        view !== 'tablet'
+      ) {
+        setView('tablet')
+      } else if (width < BREAKPOINTS.MOBILE && view !== 'mobile') {
+        setView('mobile')
+      }
+    }
+  })
 
   const options = getOptions(enabledReports)
   const defaultTitle =
@@ -156,6 +174,7 @@ export const Reports = ({
             containerRef={containerRef}
             openReport={activeTab}
             stringOverrides={stringOverrides}
+            view={view}
           />
         </ProfitAndLoss>
       </Container>
@@ -167,6 +186,7 @@ const ReportsPanel = ({
   containerRef,
   openReport,
   stringOverrides,
+  view,
 }: ReportsPanelProps) => {
   const { sidebarScope } = useContext(ProfitAndLoss.Context)
   return (
@@ -180,6 +200,7 @@ const ReportsPanel = ({
                 <ProfitAndLoss.DatePicker />
                 <DownloadButton
                   stringOverrides={stringOverrides?.downloadButton}
+                  view={view}
                 />
               </>
             }
