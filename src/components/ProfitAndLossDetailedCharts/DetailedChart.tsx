@@ -3,12 +3,9 @@ import { SidebarScope } from '../../hooks/useProfitAndLoss/useProfitAndLoss'
 import { centsToDollars as formatMoney } from '../../models/Money'
 import { LineBaseItem } from '../../types/line_item'
 import { formatPercent } from '../../utils/format'
-import { humanizeTitle } from '../../utils/profitAndLossUtils'
 import { ProfitAndLossDatePicker } from '../ProfitAndLossDatePicker'
-import { Text, TextSize, TextWeight } from '../Typography'
 import { mapTypesToColors } from './DetailedTable'
 import classNames from 'classnames'
-import { format } from 'date-fns'
 import {
   PieChart,
   Pie,
@@ -240,16 +237,15 @@ export const DetailedChart = ({
                     }
 
                     if (hoveredItem) {
+                      const found = filteredData.find(
+                        x => x.display_name === hoveredItem,
+                      )?.share
                       return (
                         <ChartText
                           {...positioningProps}
                           className='pie-center-label__share'
                         >
-                          {`${formatPercent(
-                            filteredData.find(
-                              x => x.display_name === hoveredItem,
-                            )?.share,
-                          )}%`}
+                          {found ? `${formatPercent(found)}%` : ''}
                         </ChartText>
                       )
                     }

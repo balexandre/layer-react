@@ -140,9 +140,6 @@ export const DetailedTable = ({
 
   const typeColorMapping: any = mapTypesToColors(filteredData, chartColorsList)
 
-  // Index to keep track of the next color to assign
-  const colorIndex = 0
-
   return (
     <div className='details-container'>
       <div className='table'>
@@ -194,7 +191,9 @@ export const DetailedTable = ({
                     <td className='value-col'>${formatMoney(item.value)}</td>
                     <td className='share-col'>
                       <span className='share-cell-content'>
-                        {formatPercent(item.share)}%
+                        {item.share !== undefined
+                          ? `${formatPercent(item.share)}%`
+                          : ''}
                         <ValueIcon
                           item={item}
                           typeColorMapping={typeColorMapping}
